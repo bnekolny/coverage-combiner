@@ -16,35 +16,24 @@ class CoberturaCombiner(object):
         self.roots = [et.parse(f).getroot() for f in filenames]
 
     def combine(self):
+        root_xml = self.roots[0]
+
         for r in self.roots[1:]:
             # Combine each element with the first one, and update that
-            self.combine_element(self.roots[0], r)
+            self.combine_element(root_xml, r)
 
-        result_xml = self.roots[0]
-        self.calculate_line_coverage(result_xml)
+        (n_lines, n_hits) = self.calculate_line_coverage(root_xml, n_lines=0, n_hits=0)
+        ratio = round(n_hits/float(n_lines) if n_lines > 0 else 0, 4)
+        root_xml.set('line-rate', str(ratio))
+        #self.calculate_line_coverage(root_xml)
         # Return the string representation
-        return et.tostring(self.roots[0])
+        return et.tostring(root_xml)
 
     def _create_mapping_key(self, element):
         return '{0}:{1}'.format(element.tag,
                                 str([item for item in element.items()
                                     if 'line-rate' not in item 
                                     and 'hits' not in item]))
-
-    def _get_element_item_value(self, element, item):
-        val = element.get(item)
-        
-        # try saving as an int
-        try:
-            val = int(val)
-        except ValueError:
-            # if it's not an int, return a string
-            pass
-
-        return val
-
-    def _set_element_item_value(self, element, item, value):
-        element.set(item, str(value))
 
     def combine_element(self, one, other):
         """
@@ -90,11 +79,15 @@ class CoberturaCombiner(object):
             # Check for line-rate
             if el.get('line-rate', False):
                 # count the line coverage, here we need to "start over" counting
+                before_lines = n_lines
+                before_hits = n_hits
+
                 (n_lines, n_hits) = self.calculate_line_coverage(el, n_lines=0, n_hits=0)
                 ratio = round(n_hits/float(n_lines) if n_lines > 0 else 0, 4)
-                if el.tag != 'class':
-                    print "n_hits: %s, n_lines: %s, ratio: %s" % (n_hits, n_lines, ratio)
                 el.set('line-rate', str(ratio))
+
+                n_lines += before_lines
+                n_hits += before_hits
 
             if el.tag == 'line':
                 n_lines += 1
