@@ -9,10 +9,6 @@ class CoberturaCombiner(object):
     multiple Cobertura XML Coverage reports, and 
     generate one report showing coverage for all
     tests against a codebase.
-
-    Used a stack overflow post to get me started:
-    http://stackoverflow.com/questions/14878706/'\
-     'merge-xml-files-with-nested-elements-without-external-libraries
     """
     def __init__(self, filenames):
         assert len(filenames) > 0, 'No files'
@@ -25,7 +21,7 @@ class CoberturaCombiner(object):
             self.combine_element(self.roots[0], r)
 
         result_xml = self.roots[0]
-        self.calculate_line_coverage(result_xml)
+        #self.calculate_line_coverage(result_xml)
         # Return the string representation
         return et.tostring(self.roots[0])
 
@@ -61,9 +57,11 @@ class CoberturaCombiner(object):
 
         Going to need a bit of work to just turn 0's to 1's on conflict.
         """
+        # TODO: FIX THIS. IT ISN"T KEEPING 1's from utnit tests and putting them in functional tests
+
+
         # Create a mapping from tag name to element
         mapping = { self._create_mapping_key(el): el for el in one }
-        #mapping = { el.tag: el for el in one }
         #pdb.set_trace()
 
         for el in other:
@@ -71,10 +69,17 @@ class CoberturaCombiner(object):
             try:
                 if len(el) == 0:
                     if mapping[key] is not None and el.tag == 'line':
+                        one_val = self._get_element_item_value(mapping.values()[0], 'hits')
+                        other_val = self._get_element_item_value(el, 'hits')
+                        new_val = max(one_val, other_val)
+
+                        if one_val != other_val:
+                            print "one: %s, other: %s, new: %s" % (one_val, other_val, new_val)
                         hit = max(self._get_element_item_value(mapping.values()[0],'hits'),
                                   self._get_element_item_value(el,'hits'))
 
                         self._set_element_item_value(mapping.values()[0], 'hits', hit)
+                        # TODO: NEED TO FIGURE OUT HOW TO SET THE VALuE OF THE ORIGINAL
 
                     # Update the text
                     mapping[key].text = el.text
@@ -93,42 +98,39 @@ class CoberturaCombiner(object):
         coverage numbers for each module in the document
 
         Need to pass in the coverage list too
-
-        This is probably only working for the lowest level aggregations
         """
         # Grab only the elements which have something valuable to contribute
         gen_root = (e for e in root if len(e.getchildren()) > 0 or len(e.items()) > 0)
         for el in gen_root:
             # Check for line-rate
+            # optimize this (remove the for loop)
             for tup in el.items():
                 if el.tag == 'class' and 'line-rate' in tup:
                     # count the line coverage, here we need to "start over" counting
-                    print "found: %s, tag: %s" % (el, el.tag)
                     (n_lines, n_hits) = self.calculate_line_coverage(el, n_lines=0, n_hits=0)
-                    ratio = float(n_hits/n_lines) if n_lines > 0 else 0
-                    print "old line coverage: %s" % self._get_element_item_value(el, 'line-rate')
-                    print "new line coverage: %s, n_lines: %s" % (ratio, n_lines)
+                    ratio = n_hits/float(n_lines) if n_lines > 0 else 0
+                    old_ratio = self._get_element_item_value(el, 'line-rate')
+                    if float(old_ratio) != round(float(ratio), 4):
+                        print "old line coverage: %s" % old_ratio
+                        print "new line coverage: %s, n_hits: %s, n_lines: %s" % (round(float(ratio), 4), n_hits, n_lines)
                     self._set_element_item_value(el, 'line-rate', ratio)
-                    break
-            # For loop fall-through
-            else:
-                if el.tag == 'line':
-                    print "found a line"
-                    n_lines += 1
-                    if self._get_element_item_value(el, 'hits') == 1:
-                        n_hits += 1
-                    # Here we need to return the values and update our counts
-                    return (n_lines, n_hits)
+
+            if el.tag == 'line':
+                n_lines += 1
+                n_hits += self._get_element_item_value(el, 'hits')  # will either be 0 or 1
+                continue
 
             # Recusively process the rest of the tree
-            print "element: %s, tag: %s, sub-elements: %s" % (el, el.tag, str([e.tag for e in el]))
-            #if el.tag == 'methods':
-            #    pdb.set_trace()
-            return self.calculate_line_coverage(el, n_lines, n_hits)
+            # not sure this is being used
+            (n_lines, n_hits) = self.calculate_line_coverage(el, n_lines, n_hits)
+
+        return (n_lines, n_hits)
 
 
 if __name__ == '__main__':
-    r = CoberturaCombiner(('functional_coverage.xml', 'unit_coverage.xml')).combine()
+    r = CoberturaCombiner(('functional_coverage.xml3', 'unit_coverage.xml3')).combine()
+    #r = CoberturaCombiner(('functional_coverage.xml', 'unit_coverage.xml2')).combine()
+    #r = CoberturaCombiner(('functional_coverage.xml', 'unit_coverage.xml')).combine()
     f = open('output.xml', 'w')
     f.write(r)
     f.close()
