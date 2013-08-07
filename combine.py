@@ -22,10 +22,10 @@ class CoberturaCombiner(object):
             # Combine each element with the first one, and update that
             self.combine_element(root_xml, r)
 
-        (n_lines, n_hits) = self.calculate_line_coverage(root_xml, n_lines=0, n_hits=0)
+        (n_lines, n_hits) = self.calculate_coverage(root_xml, n_lines=0, n_hits=0)
         ratio = round(n_hits/float(n_lines) if n_lines > 0 else 0, 4)
         root_xml.set('line-rate', str(ratio))
-        #self.calculate_line_coverage(root_xml)
+        #self.calculate_coverage(root_xml)
         # Return the string representation
         return et.tostring(root_xml)
 
@@ -66,7 +66,7 @@ class CoberturaCombiner(object):
                 # Add it
                 one.append(el)
 
-    def calculate_line_coverage(self, root, n_lines=0, n_hits=0):
+    def calculate_coverage(self, root, n_lines=0, n_hits=0):
         """
         This function goes through the document and updates the 
         coverage numbers for each module in the document
@@ -82,9 +82,11 @@ class CoberturaCombiner(object):
                 before_lines = n_lines
                 before_hits = n_hits
 
-                (n_lines, n_hits) = self.calculate_line_coverage(el, n_lines=0, n_hits=0)
+                (n_lines, n_hits) = self.calculate_coverage(el, n_lines=0, n_hits=0)
                 ratio = round(n_hits/float(n_lines) if n_lines > 0 else 0, 4)
                 el.set('line-rate', str(ratio))
+                # Adding another attribute to this: number of lines
+                el.set('nlines', str(n_lines))
 
                 n_lines += before_lines
                 n_hits += before_hits
@@ -95,7 +97,7 @@ class CoberturaCombiner(object):
                 continue
 
             # Recusively process the rest of the tree
-            (n_lines, n_hits) = self.calculate_line_coverage(el, n_lines, n_hits)
+            (n_lines, n_hits) = self.calculate_coverage(el, n_lines, n_hits)
 
         return (n_lines, n_hits)
 
