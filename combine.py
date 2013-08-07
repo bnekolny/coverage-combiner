@@ -1,4 +1,5 @@
-import xml.etree.ElementTree as et
+#import xml.etree.ElementTree as et
+from lxml import etree as et
 import os
 import pdb
 
@@ -12,7 +13,6 @@ class CoberturaCombiner(object):
     """
     def __init__(self, filenames):
         assert len(filenames) > 0, 'No files'
-
         self.roots = [et.parse(f).getroot() for f in filenames]
 
     def combine(self):
@@ -21,18 +21,18 @@ class CoberturaCombiner(object):
             self.combine_element(self.roots[0], r)
 
         result_xml = self.roots[0]
-        #self.calculate_line_coverage(result_xml)
+        self.calculate_line_coverage(result_xml)
         # Return the string representation
         return et.tostring(self.roots[0])
 
     def _create_mapping_key(self, element):
-        return '{0}:{1}'.format(element.tag, 
+        return '{0}:{1}'.format(element.tag,
                                 str([item for item in element.items()
                                     if 'line-rate' not in item 
                                     and 'hits' not in item]))
 
     def _get_element_item_value(self, element, item):
-        val = dict(element.items())[item]
+        val = element.get(item)
         
         # try saving as an int
         try:
@@ -44,10 +44,7 @@ class CoberturaCombiner(object):
         return val
 
     def _set_element_item_value(self, element, item, value):
-        for tup in element.items():
-            if item in tup:
-                tup = (item, str(value))
-                break
+        element.set(item, str(value))
 
     def combine_element(self, one, other):
         """
@@ -57,29 +54,17 @@ class CoberturaCombiner(object):
 
         Going to need a bit of work to just turn 0's to 1's on conflict.
         """
-        # TODO: FIX THIS. IT ISN"T KEEPING 1's from utnit tests and putting them in functional tests
-
-
         # Create a mapping from tag name to element
         mapping = { self._create_mapping_key(el): el for el in one }
-        #pdb.set_trace()
 
         for el in other:
             key = self._create_mapping_key(el)
             try:
                 if len(el) == 0:
                     if mapping[key] is not None and el.tag == 'line':
-                        one_val = self._get_element_item_value(mapping.values()[0], 'hits')
-                        other_val = self._get_element_item_value(el, 'hits')
-                        new_val = max(one_val, other_val)
-
-                        if one_val != other_val:
-                            print "one: %s, other: %s, new: %s" % (one_val, other_val, new_val)
-                        hit = max(self._get_element_item_value(mapping.values()[0],'hits'),
-                                  self._get_element_item_value(el,'hits'))
-
-                        self._set_element_item_value(mapping.values()[0], 'hits', hit)
-                        # TODO: NEED TO FIGURE OUT HOW TO SET THE VALuE OF THE ORIGINAL
+                        hit = max(mapping[key].get('hits'), el.get('hits'))
+                        # set the new value
+                        mapping[key].set('hits', str(hit))
 
                     # Update the text
                     mapping[key].text = el.text
@@ -128,9 +113,9 @@ class CoberturaCombiner(object):
 
 
 if __name__ == '__main__':
-    r = CoberturaCombiner(('functional_coverage.xml3', 'unit_coverage.xml3')).combine()
+    #r = CoberturaCombiner(('functional_coverage.xml3', 'unit_coverage.xml3')).combine()
     #r = CoberturaCombiner(('functional_coverage.xml', 'unit_coverage.xml2')).combine()
-    #r = CoberturaCombiner(('functional_coverage.xml', 'unit_coverage.xml')).combine()
+    r = CoberturaCombiner(('functional_coverage.xml', 'unit_coverage.xml')).combine()
     f = open('output.xml', 'w')
     f.write(r)
     f.close()
