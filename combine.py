@@ -88,33 +88,26 @@ class CoberturaCombiner(object):
         gen_root = (e for e in root if len(e.getchildren()) > 0 or len(e.items()) > 0)
         for el in gen_root:
             # Check for line-rate
-            # optimize this (remove the for loop)
-            for tup in el.items():
-                if el.tag == 'class' and 'line-rate' in tup:
-                    # count the line coverage, here we need to "start over" counting
-                    (n_lines, n_hits) = self.calculate_line_coverage(el, n_lines=0, n_hits=0)
-                    ratio = n_hits/float(n_lines) if n_lines > 0 else 0
-                    old_ratio = self._get_element_item_value(el, 'line-rate')
-                    if float(old_ratio) != round(float(ratio), 4):
-                        print "old line coverage: %s" % old_ratio
-                        print "new line coverage: %s, n_hits: %s, n_lines: %s" % (round(float(ratio), 4), n_hits, n_lines)
-                    self._set_element_item_value(el, 'line-rate', ratio)
+            if el.get('line-rate', False):
+                # count the line coverage, here we need to "start over" counting
+                (n_lines, n_hits) = self.calculate_line_coverage(el, n_lines=0, n_hits=0)
+                ratio = round(n_hits/float(n_lines) if n_lines > 0 else 0, 4)
+                if el.tag != 'class':
+                    print "n_hits: %s, n_lines: %s, ratio: %s" % (n_hits, n_lines, ratio)
+                el.set('line-rate', str(ratio))
 
             if el.tag == 'line':
                 n_lines += 1
-                n_hits += self._get_element_item_value(el, 'hits')  # will either be 0 or 1
+                n_hits += int(el.get('hits'))  # will either be 0 or 1
                 continue
 
             # Recusively process the rest of the tree
-            # not sure this is being used
             (n_lines, n_hits) = self.calculate_line_coverage(el, n_lines, n_hits)
 
         return (n_lines, n_hits)
 
 
 if __name__ == '__main__':
-    #r = CoberturaCombiner(('functional_coverage.xml3', 'unit_coverage.xml3')).combine()
-    #r = CoberturaCombiner(('functional_coverage.xml', 'unit_coverage.xml2')).combine()
     r = CoberturaCombiner(('functional_coverage.xml', 'unit_coverage.xml')).combine()
     f = open('output.xml', 'w')
     f.write(r)
