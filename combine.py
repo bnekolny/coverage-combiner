@@ -1,7 +1,5 @@
-#import xml.etree.ElementTree as et
 from lxml import etree as et
-import os
-import pdb
+from optparse import OptionParser
 
 
 class CoberturaCombiner(object):
@@ -25,8 +23,7 @@ class CoberturaCombiner(object):
         (n_lines, n_hits) = self.calculate_coverage(root_xml, n_lines=0, n_hits=0)
         ratio = round(n_hits/float(n_lines) if n_lines > 0 else 0, 4)
         root_xml.set('line-rate', str(ratio))
-        #self.calculate_coverage(root_xml)
-        # Return the string representation
+
         return et.tostring(root_xml)
 
     def _create_mapping_key(self, element):
@@ -86,7 +83,7 @@ class CoberturaCombiner(object):
                 ratio = round(n_hits/float(n_lines) if n_lines > 0 else 0, 4)
                 el.set('line-rate', str(ratio))
                 # Adding another attribute to this: number of lines
-                el.set('nlines', str(n_lines))
+                el.set('num-lines', str(n_lines))
 
                 n_lines += before_lines
                 n_hits += before_hits
@@ -103,7 +100,13 @@ class CoberturaCombiner(object):
 
 
 if __name__ == '__main__':
-    r = CoberturaCombiner(('functional_coverage.xml', 'unit_coverage.xml')).combine()
-    f = open('output.xml', 'w')
+    arg_parser = OptionParser(description='Combines multiple cobertura coverage.xml files.')
+    arg_parse.add_option('-x', '--xml', type='string',
+                         help='list of xml files separated by commas')
+    (options, args) = arg_parser.parse_args()
+
+    xml_files = options.xml.split(',')
+    r = CoberturaCombiner(xml_files).combine()
+    f = open('coverage.xml', 'w')
     f.write(r)
     f.close()
