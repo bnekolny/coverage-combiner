@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name = "CoverageCombiner",
-    version = "0.2",
-    packages = find_packages(),
+    name = "coverage_combiner",
+    version = "0.3",
+    packages = ['coverage_combiner'],
 )
