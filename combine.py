@@ -101,7 +101,7 @@ class CoberturaCombiner(object):
 
 if __name__ == '__main__':
     arg_parser = OptionParser(description='Combines multiple cobertura coverage.xml files.')
-    arg_parse.add_option('-x', '--xml', type='string',
+    arg_parser.add_option('-x', '--xml', type='string',
                          help='list of xml files separated by commas')
     (options, args) = arg_parser.parse_args()
 
