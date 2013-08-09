@@ -41,7 +41,11 @@ class CoberturaCombiner(object):
         Going to need a bit of work to just turn 0's to 1's on conflict.
         """
         # Create a mapping from tag name to element
-        mapping = { self._create_mapping_key(el): el for el in one }
+        mapping = {}
+        for el in one:
+            mapping[self._create_mapping_key(el)] = el
+        # I don't think this works in python 2.6, but does in 2.7
+        #mapping = { self._create_mapping_key(el): el for el in one }
 
         for el in other:
             key = self._create_mapping_key(el)
